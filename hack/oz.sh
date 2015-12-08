@@ -26,7 +26,7 @@ create-config-secret() {
         --overwrite=false \
         --master="https://${master_fqdn}:8443" \
         --hostnames="${master_fqdn}"
-    openshift start master --write-config=. \
+    openshift start master --write-config=openshift.local.config/master \
         --master="https://${master_fqdn}:8443" \
         --network-plugin="redhat/openshift-ovs-subnet"
   popd > /dev/null
@@ -60,9 +60,9 @@ cluster's rc file to configure the bash environment:
 launch-cluster() {
   local spec_root=$1
 
-  oc create -f "${spec_root}/oz-master-service.yaml"
+#  oc create -f "${spec_root}/oz-master-service.yaml"
   oc create -f "${spec_root}/oz-master.yaml"
-  oc create -f "${spec_root}/oz-node.yaml"
+#  oc create -f "${spec_root}/oz-node.yaml"
 }
 
 delete-cluster() {
@@ -78,7 +78,7 @@ delete-cluster() {
 build-images() {
   local origin_root=$1
 
-  ${origin_root}/hack/build-go.sh
+  # ${origin_root}/hack/build-go.sh
 
   local oz_images="${origin_root}/images/oz"
 
@@ -90,24 +90,25 @@ build-images() {
 
   pushd "${oz_images}/master" > /dev/null
     cp "${openshift_cmd}" bin/
+    cp "${origin_root}/examples/hello-openshift/hello-pod.json" bin/
     docker build -t openshift/oz-master .
   popd > /dev/null
 
-  local src_path="${origin_root}/Godeps/_workspace/src/github.com"
-  local osdn_path="${src_path}/openshift/openshift-sdn/plugins/osdn/ovs/bin"
-  pushd "${oz_images}/node" > /dev/null
-    cp "${openshift_cmd}" bin/
-    cp "${osdn_path}/openshift-sdn-ovs" bin/
-    cp "${osdn_path}/openshift-sdn-ovs-setup.sh" bin/
-    docker build -t openshift/oz-node .
-  popd > /dev/null
+  # local src_path="${origin_root}/Godeps/_workspace/src/github.com"
+  # local osdn_path="${src_path}/openshift/openshift-sdn/plugins/osdn/ovs/bin"
+  # pushd "${oz_images}/node" > /dev/null
+  #   cp "${openshift_cmd}" bin/
+  #   cp "${osdn_path}/openshift-sdn-ovs" bin/
+  #   cp "${osdn_path}/openshift-sdn-ovs-setup.sh" bin/
+  #   docker build -t openshift/oz-node .
+  # popd > /dev/null
 }
 
 case "${1:-""}" in
   create)
-    create-config-secret "${CONFIG_ROOT}"
+#    create-config-secret "${CONFIG_ROOT}"
     launch-cluster "${ORIGIN_ROOT}/hack/oz"
-    create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+#    create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
     ;;
   delete)
     delete-cluster "${CONFIG_ROOT}"

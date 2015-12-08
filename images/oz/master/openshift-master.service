@@ -5,9 +5,7 @@ After=docker.target network.target
 
 [Service]
 Environment="OPENSHIFT_DIND=true"
-ExecPreStart=cp /config/* /var/lib/origin/openshift.local.config/master/
-ExecStart=/usr/bin/openshift start master --loglevel=5 \
-  --config=/var/lib/origin/openshift.local.config/master/master-config.yaml
+ExecStart=/usr/bin/openshift start
 WorkingDirectory=/var/lib/origin
 Restart=on-failure
 RestartSec=10s

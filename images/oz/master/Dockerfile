@@ -13,6 +13,8 @@ ENV KUBECONFIG /var/lib/origin/openshift.local.config/master/admin.kubeconfig
 COPY openshift-master.service /etc/systemd/system
 RUN systemctl enable openshift-master.service
 
+RUN systemctl enable docker.service
+
 ADD bin/openshift /usr/bin/openshift
 RUN ln -s /usr/bin/openshift /usr/bin/oc && \
     ln -s /usr/bin/openshift /usr/bin/oadm && \
@@ -23,3 +25,5 @@ RUN ln -s /usr/bin/openshift /usr/bin/oc && \
     ln -s /usr/bin/openshift /usr/bin/openshift-docker-build && \
     ln -s /usr/bin/openshift /usr/bin/openshift-sti-build && \
     ln -s /usr/bin/openshift /usr/bin/openshift-f5-router
+
+ADD bin/hello-pod.json /tmp/hello-pod.json

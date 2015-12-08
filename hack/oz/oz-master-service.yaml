@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oz-master
+spec:
+  ports:
+    - port: 8443
+      name: oz-master
+      targetPort: 8443
+  selector:
+    name: oz-master

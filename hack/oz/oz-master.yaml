@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: oz-master
+  name: oz-master
+spec:
+  containers:
+    - image: "openshift/oz-master"
+      name: oz-master
+      ports:
+        - containerPort: 8443
+          name: oz-master
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - mountPath: /config
+          name: config
+          readOnly: true
+  volumes:
+    - name: config
+      secret:
+        secretName: oz-config

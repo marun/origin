@@ -13,3 +13,11 @@ spec:
           name: oz-master
       securityContext:
         privileged: true
+      volumeMounts:
+        - mountPath: /config
+          name: config
+          readOnly: true
+  volumes:
+    - name: config
+      secret:
+        secretName: oz-config

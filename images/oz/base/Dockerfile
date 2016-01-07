@@ -4,7 +4,7 @@
 # The standard name for this image is openshift/oz-base
 #
 
-FROM localmirror/fedora:23
+FROM fedora:23
 
 ## Configure systemd to run in a container
 ENV container=docker

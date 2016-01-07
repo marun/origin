@@ -21,13 +21,16 @@ create-config-secret() {
 
   mkdir -p "${config_root}"
 
+  local master_url="https://localhost:8443"
   pushd "${config_root}" > /dev/null
     openshift admin ca create-master-certs \
         --overwrite=false \
-        --master="https://${master_fqdn}:8443" \
-        --hostnames="${master_fqdn}"
+        --master="${master_url}" \
+        --public-master="https://${master_fqdn}:8443" \
+        --hostnames="localhost,127.0.0.1,${master_fqdn}"
     openshift start master --write-config=openshift.local.config/master \
-        --master="https://${master_fqdn}:8443" \
+        --master="${master_url}" \
+        --public-master="https://${master_fqdn}:8443" \
         --network-plugin="redhat/openshift-ovs-subnet"
   popd > /dev/null
 
@@ -60,7 +63,7 @@ cluster's rc file to configure the bash environment:
 launch-cluster() {
   local spec_root=$1
 
-#  oc create -f "${spec_root}/oz-master-service.yaml"
+  oc create -f "${spec_root}/oz-master-service.yaml"
   oc create -f "${spec_root}/oz-master.yaml"
 #  oc create -f "${spec_root}/oz-node.yaml"
 }
@@ -106,9 +109,9 @@ build-images() {
 
 case "${1:-""}" in
   create)
-#    create-config-secret "${CONFIG_ROOT}"
-    launch-cluster "${ORIGIN_ROOT}/hack/oz"
-#    create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    create-config-secret "${CONFIG_ROOT}"
+   launch-cluster "${ORIGIN_ROOT}/hack/oz"
+   create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
     ;;
   delete)
     delete-cluster "${CONFIG_ROOT}"

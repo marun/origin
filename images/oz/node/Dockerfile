@@ -16,7 +16,7 @@ ADD openshift-generate-config.sh /usr/bin/
 
 ## Install OpenShift SDN
 ADD bin/openshift-sdn-ovs /usr/bin/
-ADD bin/openshift-sdn-ovs-setup.sh /usr/bin/
+ADD bin/openshift-sdn-docker-setup.sh /usr/bin/
 
 RUN mkdir -p /etc/systemd/system/docker.service.d
 ADD docker-sdn-ovs.conf /etc/systemd/system/docker.service.d/

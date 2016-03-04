@@ -8,6 +8,7 @@ spec:
   containers:
     - image: "openshift/oz-node"
       name: oz-node
+      imagePullPolicy: IfNotPresent
       securityContext:
         privileged: true
       volumeMounts:

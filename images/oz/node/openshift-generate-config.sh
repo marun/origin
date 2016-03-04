@@ -16,7 +16,8 @@ if [ ! -f "${NODE_CONFIG_FILE}" ]; then
   cp /config/* "${CONFIG_PATH}"
 
   NAME=$(hostname)
-  MASTER=$(grep server "${CONFIG_PATH}/admin.kubeconfig" | awk '{print $2}')
+  # TODO: This is brittle if there is more than one server entry
+  MASTER=$(grep server "${CONFIG_PATH}/admin.kubeconfig" | grep -v localhost | awk '{print $2}')
   IP_ADDR=$(ip addr | grep inet | grep eth0 | \
       awk '{print $2}' | sed -e 's+/.*++')
 

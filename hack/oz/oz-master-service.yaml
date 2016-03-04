@@ -7,5 +7,7 @@ spec:
     - port: 8443
       name: oz-master
       targetPort: 8443
+      nodePort: 30123
   selector:
     name: oz-master
+  type: NodePort

@@ -5,8 +5,8 @@ After=docker.target network.target
 
 [Service]
 Environment="OPENSHIFT_DIND=true"
-ExecStartPre=mkdir -p /var/lib/origin/openshift.local.config/master
-ExecStartPre=cp /config/* /var/lib/origin/openshift.local.config/master/
+ExecStartPre=/usr/bin/mkdir -p /var/lib/origin/openshift.local.config/master
+ExecStartPre=/bin/sh -c '/usr/bin/cp /config/* /var/lib/origin/openshift.local.config/master/'
 ExecStart=/usr/bin/openshift start master --loglevel=5 \
   --config=/var/lib/origin/openshift.local.config/master/master-config.yaml
 WorkingDirectory=/var/lib/origin

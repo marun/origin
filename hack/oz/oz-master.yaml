@@ -8,6 +8,7 @@ spec:
   containers:
     - image: "openshift/oz-master"
       name: oz-master
+      imagePullPolicy: IfNotPresent
       ports:
         - containerPort: 8443
           name: oz-master

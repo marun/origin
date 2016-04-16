@@ -26,8 +26,12 @@ VOLUME ["/run", "/tmp"]
 RUN dnf -y update && dnf -y install git golang hg tar make \
   hostname bind-utils iproute iputils which procps-ng openssh-server \
   # Node-specific packages
-  docker openvswitch bridge-utils ethtool \
+  openvswitch bridge-utils ethtool \
   && dnf clean all
+
+# Install docker from upstream until fedora 23 has 1.10
+COPY docker.repo /etc/yum.repos.d/
+RUN dnf -y install docker-engine && dnf clean all
 
 # sshd should be enabled as needed
 RUN systemctl disable sshd.service

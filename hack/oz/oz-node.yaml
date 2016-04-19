@@ -9,7 +9,7 @@ spec:
     # Need to generate the image name from a template to be able to
     # optionally use local registry in case of deploying to something
     # other than an all-in-one cluster
-    - image: "openshift/oz-node"
+    - image: "10.14.6.90:4000/openshift/oz-node"
       name: oz-node
       imagePullPolicy: IfNotPresent
       securityContext:

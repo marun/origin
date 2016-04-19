@@ -22,18 +22,16 @@ create-config-secret() {
   mkdir -p "${config_root}"
 
   # TODO: Determine the public master programatically
-  local public_master="https://192.168.121.152:30123"
+  local public_master="https://172.17.0.4:30123"
   local master_url="https://localhost:8443"
   pushd "${config_root}" > /dev/null
-    openshift admin ca create-master-certs \
-        --overwrite=false \
-        --master="${master_url}" \
-        --public-master="${public_master}" \
-        --hostnames="localhost,127.0.0.1"
     openshift start master --write-config=openshift.local.config/master \
         --master="${master_url}" \
         --public-master="${public_master}" \
         --network-plugin="redhat/openshift-ovs-subnet"
+    # Ensure that the nodeport context is used by default
+    local config="openshift.local.config/master/admin.kubeconfig"
+    KUBECONFIG="${config}" oc config use-context default/172-17-0-4:30123/system:admin
   popd > /dev/null
 
   local secret_file="${config_root}/config.json"
@@ -80,15 +78,28 @@ delete-cluster() {
   rm -rf "${config_root}"
 }
 
+build-image() {
+  local name=$1
+
+  # TODO make this configurable
+  local image_repo="10.14.6.90:4000"
+  local repo_name="${image_repo}/${name}"
+
+  docker build -t "${name}" .
+  docker tag "${name}" "${repo_name}"
+  docker push "${repo_name}"
+}
+
 build-images() {
   local origin_root=$1
 
+  # TODO - build in a docker container to minimize dependencies
   # ${origin_root}/hack/build-go.sh
 
   local oz_images="${origin_root}/images/oz"
 
   pushd "${oz_images}/base" > /dev/null
-    docker build -t openshift/oz-base .
+    build-image openshift/oz-base
   popd > /dev/null
 
   local openshift_cmd="${origin_root}/_output/local/bin/linux/amd64/openshift"
@@ -96,7 +107,7 @@ build-images() {
   pushd "${oz_images}/master" > /dev/null
     cp "${openshift_cmd}" bin/
     cp "${origin_root}/examples/hello-openshift/hello-pod.json" bin/
-    docker build -t openshift/oz-master .
+    build-image openshift/oz-master
   popd > /dev/null
 
   local src_path="${origin_root}/Godeps/_workspace/src/github.com"
@@ -106,7 +117,7 @@ build-images() {
     cp "${osdn_path}/openshift-sdn-ovs" bin/
     cp "${osdn_path}/openshift-sdn-docker-setup.sh" bin/
     chmod +x bin/*
-    docker build -t openshift/oz-node .
+    build-image openshift/oz-node
   popd > /dev/null
 }
 

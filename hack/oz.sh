@@ -14,25 +14,34 @@ ORIGIN_ROOT=$(
 CONFIG_ROOT="${ORIGIN_ROOT}/_oz"
 create-config-secret() {
   local config_root=$1
+  local public_ip=$2
+  local public_port=$3
+  local service_ip=$4
 
-  local master_name="oz-master"
-  local namespace="default"
-  local master_fqdn="${master_name}.${namespace}.svc.cluster.local"
+  local master_config_dir="${config_root}/openshift.local.config/master"
+  mkdir -p "${master_config_dir}"
 
-  mkdir -p "${config_root}"
+  master_url="https://localhost:8443"
+  public_url="https://${public_ip}:${public_port}"
 
-  # TODO: Determine the public master programatically
-  local public_master="https://172.17.0.4:30123"
-  local master_url="https://localhost:8443"
-  pushd "${config_root}" > /dev/null
-    openshift start master --write-config=openshift.local.config/master \
-        --master="${master_url}" \
-        --public-master="${public_master}" \
-        --network-plugin="redhat/openshift-ovs-subnet"
-    # Ensure that the nodeport context is used by default
-    local config="openshift.local.config/master/admin.kubeconfig"
-    KUBECONFIG="${config}" oc config use-context default/172-17-0-4:30123/system:admin
-  popd > /dev/null
+  openshift admin ca create-master-certs \
+      --overwrite=false \
+      --cert-dir="${master_config_dir}" \
+      --hostnames="localhost,127.0.0.1,${public_ip},${service_ip}" \
+      --master="${master_url}" \
+      --public-master="${public_url}"
+
+  openshift start master --write-config="${master_config_dir}" \
+      --master="${master_url}" \
+      --public-master="${public_url}" \
+      --network-plugin="redhat/openshift-ovs-subnet"
+
+  # Create config files that default to the appropriate context
+  local localhost_conf="${master_config_dir}/admin.kubeconfig"
+  local public_conf="${master_config_dir}/public-admin.kubeconfig"
+  cp "${localhost_conf}" "${public_conf}"
+  local public_ctx="default/$(echo "${public_ip}" | sed 's/\./-/g'):${public_port}/system:admin"
+  oc --config="${public_conf}" config use-context "${public_ctx}"
 
   local secret_file="${config_root}/config.json"
   openshift cli secrets new oz-config \
@@ -46,7 +55,7 @@ create-rc-file() {
   local config_root=$2
 
   local rc_file="oz.rc"
-  local config="${config_root}/openshift.local.config/master/admin.kubeconfig"
+  local config="${config_root}/openshift.local.config/master/public-admin.kubeconfig"
   echo "export KUBECONFIG=${config}" > "${rc_file}"
 
   if [ "${KUBECONFIG:-}" != "${config}" ]; then
@@ -63,7 +72,6 @@ cluster's rc file to configure the bash environment:
 launch-cluster() {
   local spec_root=$1
 
-  oc create -f "${spec_root}/oz-master-service.yaml"
   oc create -f "${spec_root}/oz-master.yaml"
   oc create -f "${spec_root}/oz-node.yaml"
 }
@@ -121,11 +129,25 @@ build-images() {
   popd > /dev/null
 }
 
+create() {
+  local origin_root=$1
+  local config_root=$2
+
+  local spec_root="${ORIGIN_ROOT}/hack/oz"
+
+  oc create -f "${spec_root}/oz-master-service.yaml"
+  service_ip="$(oc get service oz-master --template "{{ .spec.clusterIP }}")"
+
+  # TODO: discover public ip and port
+  create-config-secret "${CONFIG_ROOT}" "172.17.0.4" "30123" "${service_ip}"
+  launch-cluster "${spec_root}"
+  create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+}
+
+
 case "${1:-""}" in
   create)
-    create-config-secret "${CONFIG_ROOT}"
-    launch-cluster "${ORIGIN_ROOT}/hack/oz"
-    create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
     ;;
   delete)
     delete-cluster "${CONFIG_ROOT}"

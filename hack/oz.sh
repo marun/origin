@@ -101,13 +101,9 @@ delete-cluster() {
 build-image() {
   local name=$1
 
-  # TODO make this configurable
-  local image_repo="10.14.6.90:4000"
-  local repo_name="${image_repo}/${name}"
-
+  # TODO - optionally support pushing to a repo to support deploying
+  # on more than an aio cluster.
   docker build -t "${name}" .
-  docker tag "${name}" "${repo_name}"
-  docker push "${repo_name}"
 }
 
 build-images() {

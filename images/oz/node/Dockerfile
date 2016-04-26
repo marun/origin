@@ -8,7 +8,7 @@ FROM openshift/oz-base
 
 RUN mkdir -p /var/lib/origin/openshift.local.config
 
-ENV KUBECONFIG /config/admin.kubeconfig
+ENV KUBECONFIG /config/public-admin.kubeconfig
 
 RUN systemctl enable ensure-mount-propagation.service
 RUN systemctl enable docker.service

@@ -58,7 +58,9 @@ create-config-secret() {
 }
 
 get-public-kubeconfig() {
-  echo "${CONFIG_ROOT}/openshift.local.config/master/public-admin.kubeconfig"
+  local config_root=$1
+
+  echo "${config_root}/openshift.local.config/master/public-admin.kubeconfig"
 }
 
 create-rc-file() {
@@ -87,11 +89,13 @@ cluster's rc file to configure the bash environment:
 delete-cluster() {
   local config_root=$1
 
+  local overshift_root="$(get-overshift-root ${config_root})"
+
   oc delete dc oz-node --ignore-not-found=true
   oc delete dc oz-master --ignore-not-found=true
   oc delete service oz-master --ignore-not-found=true
   oc delete secret oz-config --ignore-not-found=true
-  rm -rf "${config_root}"
+  rm -rf "${overshift_root}"
 }
 
 build-image() {
@@ -141,13 +145,15 @@ create() {
   local origin_root=$1
   local config_root=$2
 
+  local overshift_root="$(get-overshift-root ${config_root})"
+
   local spec_root="${ORIGIN_ROOT}/hack/oz"
 
   oc create -f "${spec_root}/oz-master-service.yaml"
   service_ip="$(oc get service oz-master --template "{{ .spec.clusterIP }}")"
 
   # TODO: discover public ip and port
-  create-config-secret "${CONFIG_ROOT}" "172.17.0.4" "30123" "${service_ip}"
+  create-config-secret "${overshift_root}" "10.14.6.90" "30123" "${service_ip}"
 
   # Add default service account to privileged scc to ensure that the
   # ozone container can be launched.
@@ -158,7 +164,79 @@ create() {
 
   oc create -f "${spec_root}/ozone.yaml"
 
-  create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+  create-rc-file "${ORIGIN_ROOT}" "${overshift_root}"
+}
+
+get-overshift-root() {
+  local config_root=$1
+
+  echo "${config_root}/overshift"
+}
+
+get-undershift-root() {
+  local config_root=$1
+
+  echo "${config_root}/undershift"
+}
+
+# TODO allow shutdown of undershift
+create-undershift() {
+  local origin_root=$1
+  local config_root=$2
+
+  local undershift_root="$(get-undershift-root ${config_root})"
+  mkdir -p "${undershift_root}"
+
+  # TODO discover this path
+  local bin_path="${origin_root}/_output/local/bin/linux/amd64"
+
+  local config="${undershift_root}/openshift.local.config/master/admin.kubeconfig"
+
+  pushd "${undershift_root}" > /dev/null
+    sudo bash -c "${bin_path}/openshift start &> out.log & echo \$! > ${undershift_root}/undershift.pid"
+
+    local msg="OpenShift configuration to be written"
+    local condition="test -f ${config}"
+    os::provision::wait-for-condition "${msg}" "${condition}"
+
+    # Make the configuration readable so it can be used by oc
+    sudo chmod -R g+r openshift.local.config
+  popd > /dev/null
+
+  wait-for-cluster "${config}" oc 1
+
+  local rc_file="oz-undershift.rc"
+
+  cat > "${rc_file}" <<EOF
+export KUBECONFIG=${config}
+export PATH=\$PATH:${bin_path}
+EOF
+
+  if [[ "${KUBECONFIG:-}" != "${config}"  ||
+          ":${PATH}:" != *":${bin_path}:"* ]]; then
+    echo "
+Before invoking the openshift cli for the undershift cluster, make sure to
+source the cluster's rc file to configure the bash environment:
+
+  $ . ${rc_file}
+  $ oc get nodes
+"
+  fi
+}
+
+delete-undershift() {
+  local config_root=$1
+
+  local undershift_root="$(get-undershift-root "${config_root}")"
+  local pid_filename="${undershift_root}/undershift.pid"
+  if [[ -f "${pid_filename}" ]]; then
+    local pid="$(cat "${pid_filename}")"
+    sudo -E kill -9 "${pid}"
+    # TODO consider optionally saving cluster state
+    sudo -E rm -rf "${undershift_root}"
+  else
+    >&2 echo "OpenShift underlay not detected"
+  fi
 }
 
 case "${1:-""}" in
@@ -171,10 +249,16 @@ case "${1:-""}" in
   build-images)
     build-images "${ORIGIN_ROOT}"
     ;;
+  create-undershift)
+    create-undershift "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    ;;
+  delete-undershift)
+    delete-undershift "${CONFIG_ROOT}"
+    ;;
   wait-for-cluster)
-    wait-for-cluster "$(get-public-kubeconfig ${CONFIG_ROOT})" oc 1
+    wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 1
     ;;
   *)
-    echo "Usage: $0 {create|delete|build-images|wait-for-cluster}"
+    echo "Usage: $0 {create|delete|build-images|create-undershift|delete-undershift|wait-for-cluster}"
     exit 2
 esac

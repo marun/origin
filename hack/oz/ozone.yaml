@@ -26,7 +26,7 @@ items:
         # optionally use local registry in case of deploying to something
         # other than an all-in-one cluster
         - name: oz-master
-          image: "10.14.6.90:4000/openshift/oz-master"
+          image: "openshift/oz-master"
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
@@ -59,7 +59,7 @@ items:
         # optionally use local registry in case of deploying to something
         # other than an all-in-one cluster
         - name: oz-node
-          image: "10.14.6.90:4000/openshift/oz-node"
+          image: "openshift/oz-node"
           imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true

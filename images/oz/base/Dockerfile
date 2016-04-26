@@ -42,6 +42,7 @@ RUN curl -fL "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hac
   -o /usr/local/bin/dind && chmod +x /usr/local/bin/dind
 RUN mkdir -p /etc/systemd/system/docker.service.d
 COPY oz.conf /etc/systemd/system/docker.service.d/
+COPY ensure-mount-propagation.service /etc/systemd/system/
 
 VOLUME /var/lib/docker
 

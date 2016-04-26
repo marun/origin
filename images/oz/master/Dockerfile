@@ -13,6 +13,7 @@ ENV KUBECONFIG /var/lib/origin/openshift.local.config/master/admin.kubeconfig
 COPY openshift-master.service /etc/systemd/system
 RUN systemctl enable openshift-master.service
 
+RUN systemctl enable ensure-mount-propagation.service
 RUN systemctl enable docker.service
 
 ADD bin/openshift /usr/bin/openshift

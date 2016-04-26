@@ -1,0 +1,9 @@
+[Unit]
+Description=Ensure mount propagation for /
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount --make-shared /
+
+[Install]
+RequiredBy=docker.service

@@ -10,6 +10,7 @@ ORIGIN_ROOT=$(
   cd "${origin_root}"
   pwd
 )
+source ${ORIGIN_ROOT}/contrib/vagrant/provision-util.sh
 
 CONFIG_ROOT="${ORIGIN_ROOT}/_oz"
 create-config-secret() {
@@ -56,13 +57,17 @@ create-config-secret() {
   oc create -f "${secret_file}"
 }
 
+get-public-kubeconfig() {
+  echo "${CONFIG_ROOT}/openshift.local.config/master/public-admin.kubeconfig"
+}
+
 create-rc-file() {
   local origin_root=$1
   local config_root=$2
 
   # TODO vary the rc filename to support more than one ozone instance
   local rc_file="oz.rc"
-  local config="${config_root}/openshift.local.config/master/public-admin.kubeconfig"
+  local config="$(get-public-kubeconfig ${config_root})"
   cat > "${rc_file}" <<EOF
 export OZ_KUBECONFIG=${config}
 alias oz='KUBECONFIG=${config}'
@@ -154,7 +159,6 @@ create() {
   create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
 }
 
-
 case "${1:-""}" in
   create)
     create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
@@ -165,7 +169,10 @@ case "${1:-""}" in
   build-images)
     build-images "${ORIGIN_ROOT}"
     ;;
+  wait-for-cluster)
+    wait-for-cluster "$(get-public-kubeconfig ${CONFIG_ROOT})" oc 1
+    ;;
   *)
-    echo "Usage: $0 {create|delete|build-images}"
+    echo "Usage: $0 {create|delete|build-images|wait-for-cluster}"
     exit 2
 esac

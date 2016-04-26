@@ -320,35 +320,6 @@ os::provision::install-cmds ${DEPLOYED_ROOT}"
   done
 }
 
-function nodes-are-ready() {
-  local oc="$(os::build::find-binary oc)"
-  local kc="$(os::provision::get-admin-config ${CONFIG_ROOT})"
-  read -d '' template <<'EOF'
-{{range $item := .items}}
-  {{if not .spec.unschedulable}}
-    {{range .status.conditions}}
-      {{if eq .type "Ready"}}
-        {{if eq .status "True"}}
-          {{printf "%s\\n" $item.metadata.name}}
-        {{end}}
-      {{end}}
-    {{end}}
-  {{end}}
-{{end}}
-EOF
-  # Remove formatting before use
-  template="$(echo "${template}" | tr -d '\n' | sed -e 's/} \+/}/g')"
-  local count="$("${oc}" --config="${kc}" get nodes \
-                         --template "${template}" | wc -l)"
-  test "${count}" -ge "${NODE_COUNT}"
-}
-
-function wait-for-cluster() {
-  local msg="nodes to register with the master"
-  local condition="nodes-are-ready"
-  os::provision::wait-for-condition "${msg}" "${condition}"
-}
-
 case "${1:-""}" in
   start)
     start
@@ -364,7 +335,8 @@ case "${1:-""}" in
     redeploy
     ;;
   wait-for-cluster)
-    wait-for-cluster
+    wait-for-cluster "$(os::provision::get-admin-config ${CONFIG_ROOT})" \
+        "$(os::build::find-binary oc)" "${NODE_COUNT}"
     ;;
   build-images)
     BUILD_IMAGES=1

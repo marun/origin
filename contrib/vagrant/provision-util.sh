@@ -433,3 +433,38 @@ os::provision::enable-overlay-storage() {
 
   echo "${msg}"
 }
+
+function nodes-are-ready() {
+  local kubeconfig=$1
+  local oc=$2
+  local expected_node_count=$3
+
+  read -d '' template <<'EOF'
+{{range $item := .items}}
+  {{if not .spec.unschedulable}}
+    {{range .status.conditions}}
+      {{if eq .type "Ready"}}
+        {{if eq .status "True"}}
+          {{printf "%s\\n" $item.metadata.name}}
+        {{end}}
+      {{end}}
+    {{end}}
+  {{end}}
+{{end}}
+EOF
+  # Remove formatting before use
+  template="$(echo "${template}" | tr -d '\n' | sed -e 's/} \+/}/g')"
+  local count="$("${oc}" --config="${kubeconfig}" get nodes \
+                         --template "${template}" | wc -l)"
+  test "${count}" -ge "${expected_node_count}"
+}
+
+function wait-for-cluster() {
+  local kubeconfig=$1
+  local oc=$2
+  local expected_node_count=$3
+
+  local msg="${expected_node_count} node(s) to report readiness"
+  local condition="nodes-are-ready ${kubeconfig} ${oc} ${expected_node_count}"
+  os::provision::wait-for-condition "${msg}" "${condition}"
+}

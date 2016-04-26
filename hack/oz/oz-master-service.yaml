@@ -9,5 +9,5 @@ spec:
       targetPort: 8443
       nodePort: 30123
   selector:
-    name: oz-master
+    deploymentconfig: oz-master
   type: NodePort

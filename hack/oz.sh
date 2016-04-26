@@ -84,18 +84,11 @@ cluster's rc file to configure the bash environment:
   fi
 }
 
-launch-cluster() {
-  local spec_root=$1
-
-  oc create -f "${spec_root}/oz-master.yaml"
-  oc create -f "${spec_root}/oz-node.yaml"
-}
-
 delete-cluster() {
   local config_root=$1
 
-  oc delete pod oz-node --ignore-not-found=true
-  oc delete pod oz-master --ignore-not-found=true
+  oc delete dc oz-node --ignore-not-found=true
+  oc delete dc oz-master --ignore-not-found=true
   oc delete service oz-master --ignore-not-found=true
   oc delete secret oz-config --ignore-not-found=true
   rm -rf "${config_root}"
@@ -155,7 +148,16 @@ create() {
 
   # TODO: discover public ip and port
   create-config-secret "${CONFIG_ROOT}" "172.17.0.4" "30123" "${service_ip}"
-  launch-cluster "${spec_root}"
+
+  # Add default service account to privileged scc to ensure that the
+  # ozone container can be launched.
+  #
+  # TODO add under a new service account like the router to avoid
+  # giving too much privilege to the default account.
+  oadm policy add-scc-to-group privileged system:serviceaccounts:default
+
+  oc create -f "${spec_root}/ozone.yaml"
+
   create-rc-file "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
 }
 

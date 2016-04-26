@@ -21,20 +21,26 @@ create-config-secret() {
   local master_config_dir="${config_root}/openshift.local.config/master"
   mkdir -p "${master_config_dir}"
 
+  # Ensure nodes can reach master via service dns
+  # TODO: make the master name and namespace dynamic
+  local master_name="oz-master"
+  local namespace="default"
+  local master_fqdn="${master_name}.${namespace}.svc.cluster.local"
+
   master_url="https://localhost:8443"
   public_url="https://${public_ip}:${public_port}"
-
-  openshift admin ca create-master-certs \
-      --overwrite=false \
-      --cert-dir="${master_config_dir}" \
-      --hostnames="localhost,127.0.0.1,${public_ip},${service_ip}" \
-      --master="${master_url}" \
-      --public-master="${public_url}"
 
   openshift start master --write-config="${master_config_dir}" \
       --master="${master_url}" \
       --public-master="${public_url}" \
       --network-plugin="redhat/openshift-ovs-subnet"
+
+  openshift admin ca create-master-certs \
+      --overwrite=false \
+      --cert-dir="${master_config_dir}" \
+      --hostnames="localhost,127.0.0.1,${public_ip},${service_ip},${master_fqdn}" \
+      --master="${master_url}" \
+      --public-master="${public_url}"
 
   # Create config files that default to the appropriate context
   local localhost_conf="${master_config_dir}/admin.kubeconfig"

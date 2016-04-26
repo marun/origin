@@ -60,17 +60,21 @@ create-rc-file() {
   local origin_root=$1
   local config_root=$2
 
+  # TODO vary the rc filename to support more than one ozone instance
   local rc_file="oz.rc"
   local config="${config_root}/openshift.local.config/master/public-admin.kubeconfig"
-  echo "export KUBECONFIG=${config}" > "${rc_file}"
+  cat > "${rc_file}" <<EOF
+export OZ_KUBECONFIG=${config}
+alias oz='KUBECONFIG=${config}'
+EOF
 
-  if [ "${KUBECONFIG:-}" != "${config}" ]; then
+  if [[ "${OZ_KUBECONFIG:-}" != "${config}" ]]; then
     echo ""
-    echo "Before invoking the openshift cli, make sure to source the
+    echo "Before invoking the openshift cli for the ozone cluster, make sure to source the
 cluster's rc file to configure the bash environment:
 
   $ . ${rc_file}
-  $ oc get nodes
+  $ oz oc get nodes
 "
   fi
 }

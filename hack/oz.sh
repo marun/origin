@@ -98,6 +98,18 @@ delete-cluster() {
   rm -rf "${overshift_root}"
 }
 
+cleanup-volumes() {
+  # Cleanup orphaned volumes
+  #
+  # See: https://github.com/jpetazzo/dind#important-warning-about-disk-usage
+  #
+  echo "Cleaning up volumes used by docker-in-docker daemons"
+  local volume_ids=$(docker volume ls -qf dangling=true)
+  if [[ "${volume_ids}" ]]; then
+    docker volume rm ${volume_ids}
+  fi
+}
+
 build-image() {
   local name=$1
 
@@ -242,6 +254,10 @@ case "${1:-""}" in
   delete)
     delete-cluster "${CONFIG_ROOT}"
     ;;
+  cleanup-volumes)
+    # TODO do this automatically on deletion
+    cleanup-volumes
+    ;;
   build-images)
     build-images "${ORIGIN_ROOT}"
     ;;
@@ -255,6 +271,6 @@ case "${1:-""}" in
     wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 1
     ;;
   *)
-    echo "Usage: $0 {create|delete|build-images|create-undershift|delete-undershift|wait-for-cluster}"
+    echo "Usage: $0 {create|delete|cleanup-volumes|build-images|create-undershift|delete-undershift|wait-for-cluster}"
     exit 2
 esac

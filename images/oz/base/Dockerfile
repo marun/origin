@@ -39,7 +39,11 @@ RUN systemctl disable sshd.service
 ## Configure dind
 ENV DIND_COMMIT 81aa1b507f51901eafcfaad70a656da376cf937d
 RUN curl -fL "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" \
-  -o /usr/local/bin/dind && chmod +x /usr/local/bin/dind
+  -o /usr/local/bin/dind-wrapper && chmod +x /usr/local/bin/dind-wrapper
+# The kubelet naively tries to manage a random process named 'docker'.
+# Rename docker to dind via symlink to ensure an external kubelet
+# doesn't try to manage the docker-in-docker process.
+RUN ln -s /usr/bin/docker /usr/bin/dind
 RUN mkdir -p /etc/systemd/system/docker.service.d
 COPY oz.conf /etc/systemd/system/docker.service.d/
 COPY ensure-mount-propagation.service /etc/systemd/system/

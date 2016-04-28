@@ -8,4 +8,6 @@ FROM openshift/oz-base
 
 RUN mkdir -p /var/lib/origin/openshift.local.config/node
 
+COPY decommission-node.sh /usr/local/bin/
+
 ENV KUBECONFIG /config/public-admin.kubeconfig

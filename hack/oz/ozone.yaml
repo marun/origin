@@ -67,3 +67,7 @@ items:
           - mountPath: /config
             name: oz-config
             readOnly: true
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/local/bin/decommission-node.sh"]

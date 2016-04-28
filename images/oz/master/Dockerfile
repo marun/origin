@@ -1,5 +1,5 @@
 #
-# This image is the image for the master an openshift dev cluster.
+# This image is for the master of an openshift-on-openshift dev cluster.
 #
 # The standard name for this image is openshift/oz-master
 #
@@ -13,18 +13,16 @@ ENV KUBECONFIG /var/lib/origin/openshift.local.config/master/admin.kubeconfig
 COPY openshift-master.service /etc/systemd/system
 RUN systemctl enable openshift-master.service
 
-RUN systemctl enable ensure-mount-propagation.service
-RUN systemctl enable docker.service
+COPY disable-master-node.sh /usr/local/bin/
+COPY disable-master-node.service /etc/systemd/system
+RUN systemctl enable disable-master-node.service
 
-ADD bin/openshift /usr/bin/openshift
-RUN ln -s /usr/bin/openshift /usr/bin/oc && \
-    ln -s /usr/bin/openshift /usr/bin/oadm && \
-    ln -s /usr/bin/openshift /usr/bin/osc && \
-    ln -s /usr/bin/openshift /usr/bin/osadm && \
-    ln -s /usr/bin/openshift /usr/bin/kubectl && \
-    ln -s /usr/bin/openshift /usr/bin/openshift-deploy && \
-    ln -s /usr/bin/openshift /usr/bin/openshift-docker-build && \
-    ln -s /usr/bin/openshift /usr/bin/openshift-sti-build && \
-    ln -s /usr/bin/openshift /usr/bin/openshift-f5-router
+# Override name for node that will ensure master to pod connectivity
+RUN sed -i -e 's+^\(ExecStartPre=.*\)+\1 oz-master-node+'\
+ /etc/systemd/system/openshift-node.service
 
-ADD bin/hello-pod.json /tmp/hello-pod.json
+# Ensure that the node depends on the master
+RUN sed -i -e 's+^\(Requires=.*\)+\1 openshift-master.service+'\
+ /etc/systemd/system/openshift-node.service
+RUN sed -i -e 's+^\(After=.*\)+\1 openshift-master.service+'\
+ /etc/systemd/system/openshift-node.service

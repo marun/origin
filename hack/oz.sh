@@ -126,25 +126,22 @@ build-images() {
 
   local oz_images="${origin_root}/images/oz"
 
-  pushd "${oz_images}/base" > /dev/null
-    build-image openshift/oz-base
-  popd > /dev/null
-
   local openshift_cmd="${origin_root}/_output/local/bin/linux/amd64/openshift"
-
-  pushd "${oz_images}/master" > /dev/null
-    cp "${openshift_cmd}" bin/
-    cp "${origin_root}/examples/hello-openshift/hello-pod.json" bin/
-    build-image openshift/oz-master
-  popd > /dev/null
-
   local src_path="${origin_root}/Godeps/_workspace/src/github.com"
   local osdn_path="${src_path}/openshift/openshift-sdn/plugins/osdn/ovs/bin"
-  pushd "${oz_images}/node" > /dev/null
+  pushd "${oz_images}/base" > /dev/null
     cp "${openshift_cmd}" bin/
     cp "${osdn_path}/openshift-sdn-ovs" bin/
     cp "${osdn_path}/openshift-sdn-docker-setup.sh" bin/
     chmod +x bin/*
+    build-image openshift/oz-base
+  popd > /dev/null
+
+  pushd "${oz_images}/master" > /dev/null
+    build-image openshift/oz-master
+  popd > /dev/null
+
+  pushd "${oz_images}/node" > /dev/null
     build-image openshift/oz-node
   popd > /dev/null
 }
@@ -268,7 +265,7 @@ case "${1:-""}" in
     delete-undershift "${CONFIG_ROOT}"
     ;;
   wait-for-cluster)
-    wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 1
+    wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 2
     ;;
   *)
     echo "Usage: $0 {create|delete|cleanup-volumes|build-images|create-undershift|delete-undershift|wait-for-cluster}"

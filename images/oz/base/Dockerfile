@@ -1,5 +1,5 @@
 #
-# This image is the base image for nodes of an openshift dev cluster.
+# This is the base image for nodes of an openshift dev cluster.
 #
 # The standard name for this image is openshift/oz-base
 #
@@ -41,14 +41,42 @@ ENV DIND_COMMIT 81aa1b507f51901eafcfaad70a656da376cf937d
 RUN curl -fL "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" \
   -o /usr/local/bin/dind-wrapper && chmod +x /usr/local/bin/dind-wrapper
 # The kubelet naively tries to manage a random process named 'docker'.
-# Rename docker to dind via symlink to ensure an external kubelet
+# Rename docker to dind via hardlink to ensure an external kubelet
 # doesn't try to manage the docker-in-docker process.
-RUN ln -s /usr/bin/docker /usr/bin/dind
+RUN ln /usr/bin/docker /usr/local/bin/dind
 RUN mkdir -p /etc/systemd/system/docker.service.d
 COPY oz.conf /etc/systemd/system/docker.service.d/
 COPY ensure-mount-propagation.service /etc/systemd/system/
 
 VOLUME /var/lib/docker
+
+RUN systemctl enable ensure-mount-propagation.service
+RUN systemctl enable docker.service
+
+COPY openshift-generate-config.sh /usr/local/bin/
+
+RUN mkdir -p /etc/systemd/system/docker.service.d
+COPY docker-sdn-ovs.conf /etc/systemd/system/docker.service.d/
+
+RUN systemctl enable openvswitch
+
+COPY openshift-node.service /etc/systemd/system
+RUN systemctl enable openshift-node.service
+
+## Install OpenShift SDN
+COPY bin/openshift-sdn-ovs /usr/local/bin/
+COPY bin/openshift-sdn-docker-setup.sh /usr/local/bin/
+
+COPY bin/openshift /usr/local/bin/openshift
+RUN ln -s /usr/local/bin/openshift /usr/local/bin/oc && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/oadm && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/osc && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/osadm && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/kubectl && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/openshift-deploy && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/openshift-docker-build && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/openshift-sti-build && \
+    ln -s /usr/local/bin/openshift /usr/local/bin/openshift-f5-router
 
 # Fix 'WARNING: terminal is not fully functional' when TERM=dumb
 ENV TERM=xterm

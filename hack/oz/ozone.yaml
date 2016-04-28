@@ -40,7 +40,7 @@ items:
   metadata:
     name: oz-node
   spec:
-    replicas: 1
+    replicas: 2
     selector:
       deploymentconfig: oz-node
     template:

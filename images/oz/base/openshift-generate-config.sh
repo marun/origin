@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -o errexit
 set -o nounset
@@ -21,7 +21,7 @@ if [ ! -f "${NODE_CONFIG_FILE}" ]; then
   IP_ADDR=$(ip addr | grep inet | grep eth0 | \
       awk '{print $2}' | sed -e 's+/.*++')
 
-  /usr/bin/openshift admin create-node-config \
+  /usr/local/bin/openshift admin create-node-config \
     --node-dir="${NODE_CONFIG_DIR}" \
     --node="${NAME}" \
     --master="${MASTER}" \

@@ -57,6 +57,12 @@ create-config-secret() {
   oc create -f "${secret_file}"
 }
 
+get-kubeconfig() {
+  local config_root=$1
+
+  echo "${config_root}/openshift.local.config/master/admin.kubeconfig"
+}
+
 get-public-kubeconfig() {
   local config_root=$1
 
@@ -205,7 +211,7 @@ create-undershift() {
   # TODO discover this path
   local bin_path="${origin_root}/_output/local/bin/linux/amd64"
 
-  local config="${undershift_root}/openshift.local.config/master/admin.kubeconfig"
+  local config="$(get-kubeconfig "${undershift_root}")"
 
   pushd "${undershift_root}" > /dev/null
     sudo bash -c "${bin_path}/openshift start &> out.log & echo \$! > ${undershift_root}/undershift.pid"
@@ -254,6 +260,15 @@ delete-undershift() {
   fi
 }
 
+wait-for-overshift() {
+  local config_root=$1
+
+  local undershift_config="$(get-kubeconfig "$(get-undershift-root "${config_root}")")"
+  local node_count="$(oc --config="${undershift_config}" get dc oz-node --template='{{ .spec.replicas }}')"
+  local overshift_config="$(get-public-kubeconfig "$(get-overshift-root "${config_root}")")"
+  wait-for-cluster "${overshift_config}" oc "${node_count}"
+}
+
 case "${1:-""}" in
   create)
     create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
@@ -278,7 +293,7 @@ case "${1:-""}" in
     delete-undershift "${CONFIG_ROOT}"
     ;;
   wait-for-cluster)
-    wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 2
+    wait-for-overshift "${CONFIG_ROOT}"
     ;;
   *)
     echo "Usage: $0 {create|delete|cleanup|build-images|create-undershift|delete-undershift|wait-for-cluster}"

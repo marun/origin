@@ -110,6 +110,16 @@ cleanup-volumes() {
   fi
 }
 
+delete-notready-nodes() {
+  local config_root=$1
+
+  local config="$(get-public-kubeconfig "$(get-overshift-root "${config_root}")")"
+  local node_names="$(oc --config="${config}" get nodes | grep node | grep NotReady | awk '{print $1}')"
+  if [[ -n "${node_names}" ]]; then
+    oc --config="${config}" delete node ${node_names}
+  fi
+}
+
 build-image() {
   local name=$1
 
@@ -251,7 +261,10 @@ case "${1:-""}" in
   delete)
     delete-cluster "${CONFIG_ROOT}"
     ;;
-  cleanup-volumes)
+  cleanup)
+    # TODO remove nodes that don't have corresponding pods in the
+    # undershift
+    delete-notready-nodes "${CONFIG_ROOT}"
     # TODO do this automatically on deletion
     cleanup-volumes
     ;;
@@ -268,6 +281,6 @@ case "${1:-""}" in
     wait-for-cluster "$(get-public-kubeconfig "$(get-overshift-root "${CONFIG_ROOT}")")" oc 2
     ;;
   *)
-    echo "Usage: $0 {create|delete|cleanup-volumes|build-images|create-undershift|delete-undershift|wait-for-cluster}"
+    echo "Usage: $0 {create|delete|cleanup|build-images|create-undershift|delete-undershift|wait-for-cluster}"
     exit 2
 esac

@@ -31,8 +31,13 @@ create-config-secret() {
   master_url="https://localhost:8443"
   public_url="https://${public_ip}:${public_port}"
 
+  # TODO is there another way to set the network plugin and etcd dir
+  # and is it safe to generate configuration over existing
+  # configuration to allow config/etcd store reuse across cluster
+  # starts?
   openshift start master --write-config="${master_config_dir}" \
       --master="${master_url}" \
+      --etcd-dir="/var/lib/origin/openshift.local.etcd" \
       --public-master="${public_url}" \
       --network-plugin="redhat/openshift-ovs-subnet"
 

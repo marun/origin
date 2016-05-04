@@ -106,7 +106,8 @@ delete-cluster() {
   oc delete dc oz-master --ignore-not-found=true
   oc delete service oz-master --ignore-not-found=true
   oc delete secret oz-config --ignore-not-found=true
-  rm -rf "${overshift_root}"
+  # etcd permissions require the use of sudo
+  sudo rm -rf "${overshift_root}"
 }
 
 cleanup-volumes() {

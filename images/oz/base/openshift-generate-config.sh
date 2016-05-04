@@ -25,7 +25,7 @@ if [ ! -f "${NODE_CONFIG_FILE}" ]; then
     --node-dir="${NODE_CONFIG_DIR}" \
     --node="${NAME}" \
     --master="${MASTER}" \
-    --hostnames="${IP_ADDR}" \
+    --hostnames="${NAME},${IP_ADDR}" \
     --network-plugin="redhat/openshift-ovs-subnet" \
     --node-client-certificate-authority="${MASTER_CONFIG_DIR}/ca.crt" \
     --certificate-authority="${MASTER_CONFIG_DIR}/ca.crt" \

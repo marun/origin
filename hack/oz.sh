@@ -275,9 +275,31 @@ wait-for-overshift() {
   wait-for-cluster "${overshift_config}" oc "${node_count}"
 }
 
+# Make it easy to get a shell on any of the ozone nodes. Use docker
+# exec to work around 'oc exec' 80 char term limitation.
+node-exec() {
+  local node_name=$1
+
+  echo "Connecting to node ${node_name}..."
+
+  # The node pods have only one container.
+  template='{{ with $cs := index .status.containerStatuses 0 }}{{ $cs.containerID }}{{ end }}'
+  container_id="$(oc get pod "${node_name}" --template="${template}" | sed -e 's+docker://++')"
+  if [[ -n "${container_id}" ]]; then
+    docker exec -ti "${container_id}" /bin/bash
+  fi
+}
+
 case "${1:-""}" in
   create)
     create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    ;;
+  exec)
+    if [[ -z "${2:-}" ]]; then
+      >&2 echo "Usage: $0 $1 [name of node pod]"
+      exit 2
+    fi
+    node-exec "${2}"
     ;;
   delete)
     delete-cluster "${CONFIG_ROOT}"
@@ -302,6 +324,6 @@ case "${1:-""}" in
     wait-for-overshift "${CONFIG_ROOT}"
     ;;
   *)
-    echo "Usage: $0 {create|delete|cleanup|build-images|create-undershift|delete-undershift|wait-for-cluster}"
+    echo "Usage: $0 {create|exec|delete|cleanup|build-images|create-undershift|delete-undershift|wait-for-cluster}"
     exit 2
 esac

@@ -17,6 +17,12 @@ COPY disable-master-node.sh /usr/local/bin/
 COPY disable-master-node.service /etc/systemd/system
 RUN systemctl enable disable-master-node.service
 
+COPY sync-etc-hosts.sh /usr/local/bin/
+COPY sync-etc-hosts.service /etc/systemd/system/
+COPY sync-etc-hosts.timer /etc/systemd/system/
+RUN systemctl enable sync-etc-hosts.service
+RUN systemctl enable sync-etc-hosts.timer
+
 # Override name for node that will ensure master to pod connectivity
 RUN sed -i -e 's+^\(ExecStartPre=.*\)+\1 oz-master-node+'\
  /etc/systemd/system/openshift-node.service

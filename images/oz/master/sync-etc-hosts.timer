@@ -1,0 +1,8 @@
+[Unit]
+Description=Run sync-etc-hosts.service every 10s
+
+[Timer]
+OnUnitInactiveSec=15
+
+[Install]
+WantedBy=sync-etc-hosts.service

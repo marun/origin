@@ -1,0 +1,11 @@
+[Unit]
+Description=Synchronize /etc/hosts with ozone cluster node state
+Requires=openshift-master.service
+After=openshift-master.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/sync-etc-hosts.sh
+
+[Install]
+WantedBy=openshift-master.service

@@ -292,7 +292,23 @@ node-exec() {
 
 case "${1:-""}" in
   create)
+    WAIT_FOR_CLUSTER=
+    OPTIND=2
+    while getopts ":w" opt; do
+      case $opt in
+        w)
+          WAIT_FOR_CLUSTER=1
+          ;;
+        \?)
+          echo "Invalid option: -${OPTARG}" >&2
+          exit 1
+          ;;
+      esac
+    done
     create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    if [[ -n "${WAIT_FOR_CLUSTER}" ]]; then
+      wait-for-overshift "${CONFIG_ROOT}"
+    fi
     ;;
   exec)
     if [[ -z "${2:-}" ]]; then

@@ -12,6 +12,9 @@ ORIGIN_ROOT=$(
 )
 source ${ORIGIN_ROOT}/contrib/vagrant/provision-util.sh
 
+# TODO Discover the ip to use
+PUBLIC_IP="10.14.6.90"
+
 CONFIG_ROOT="${ORIGIN_ROOT}/_oz"
 create-config-secret() {
   local config_root=$1
@@ -179,8 +182,8 @@ create() {
   oc create -f "${spec_root}/oz-master-service.yaml"
   service_ip="$(oc get service oz-master --template "{{ .spec.clusterIP }}")"
 
-  # TODO: discover public ip and port
-  create-config-secret "${overshift_root}" "10.14.6.90" "30123" "${service_ip}"
+  # TODO: discover the port
+  create-config-secret "${overshift_root}" "${PUBLIC_IP}" "30123" "${service_ip}"
 
   # Add default service account to privileged scc to ensure that the
   # ozone container can be launched.
@@ -220,7 +223,9 @@ create-undershift() {
   local config="$(get-kubeconfig "${undershift_root}")"
 
   pushd "${undershift_root}" > /dev/null
-    sudo bash -c "${bin_path}/openshift start &> out.log & echo \$! > ${undershift_root}/undershift.pid"
+    sudo bash -c "OPENSHIFT_DIND=true OPENSHIFT_DNS_DOMAIN=undershift.local \
+        ${bin_path}/openshift start --dns='tcp://${PUBLIC_IP}:53' \
+        &> out.log & echo \$! > ${undershift_root}/undershift.pid"
 
     local msg="OpenShift configuration to be written"
     local condition="test -f ${config}"

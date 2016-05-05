@@ -12,6 +12,8 @@ ORIGIN_ROOT=$(
 )
 source ${ORIGIN_ROOT}/contrib/vagrant/provision-util.sh
 
+# TODO ensure the oc path is always qualified
+
 # TODO Discover the ip to use
 PUBLIC_IP="10.14.6.90"
 
@@ -147,6 +149,7 @@ build-images() {
   local origin_root=$1
 
   # TODO - build in a docker container to minimize dependencies
+  # TODO - Need to build oc as well?
   # ${origin_root}/hack/build-go.sh
 
   local oz_images="${origin_root}/images/oz"
@@ -235,7 +238,7 @@ create-undershift() {
     sudo chmod -R g+r openshift.local.config
   popd > /dev/null
 
-  wait-for-cluster "${config}" oc 1
+  wait-for-cluster "${config}" "${bin_path}/oc" 1
 
   local rc_file="oz-undershift.rc"
 
@@ -262,7 +265,12 @@ delete-undershift() {
   local undershift_root="$(get-undershift-root "${config_root}")"
   local pid_filename="${undershift_root}/undershift.pid"
   if [[ -f "${pid_filename}" ]]; then
+
+    # TODO wait for terminating ozone nodes or their pod volumes will
+    # be busy until docker is restarted.
+
     local pid="$(cat "${pid_filename}")"
+    # TODO kill gracefully!
     sudo -E kill -9 "${pid}"
     # TODO consider optionally saving cluster state
     sudo -E rm -rf "${undershift_root}"

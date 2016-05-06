@@ -22,7 +22,7 @@ create-config-secret() {
   local config_root=$1
   local public_ip=$2
   local public_port=$3
-  local service_ip=$4
+  local undershift_service_ip=$4
 
   local master_config_dir="${config_root}/openshift.local.config/master"
   mkdir -p "${master_config_dir}"
@@ -35,6 +35,13 @@ create-config-secret() {
 
   master_url="https://localhost:8443"
   public_url="https://${public_ip}:${public_port}"
+
+  # Include the ip for the overshift kube service to ensure that nodes
+  # will be able to talk to the api.
+  #
+  # TODO - ensure that the portal net cidr differs between overshift
+  # and undershift to avoid confusion.
+  local overshift_service_ip="172.30.0.1"
 
   # TODO is there another way to set the network plugin and etcd dir
   # and is it safe to generate configuration over existing
@@ -49,7 +56,7 @@ create-config-secret() {
   openshift admin ca create-master-certs \
       --overwrite=false \
       --cert-dir="${master_config_dir}" \
-      --hostnames="localhost,127.0.0.1,${public_ip},${service_ip},${master_fqdn}" \
+      --hostnames="localhost,127.0.0.1,${public_ip},${undershift_service_ip},${master_fqdn},${overshift_service_ip}" \
       --master="${master_url}" \
       --public-master="${public_url}"
 
@@ -225,10 +232,17 @@ create-undershift() {
 
   local config="$(get-kubeconfig "${undershift_root}")"
 
+  # Override the default portal net cidr so that the ozone cluster can
+  # use the default without ambiguity.
+  #
+  # TODO: Allow this to be configured
+  local portal_net="172.40.0.0/16"
+
   pushd "${undershift_root}" > /dev/null
     sudo bash -c "OPENSHIFT_DIND=true OPENSHIFT_DNS_DOMAIN=undershift.local \
         ${bin_path}/openshift start --dns='tcp://${PUBLIC_IP}:53' \
-        &> out.log & echo \$! > ${undershift_root}/undershift.pid"
+        --portal-net=${portal_net} &> out.log & \
+        echo \$! > ${undershift_root}/undershift.pid"
 
     local msg="OpenShift configuration to be written"
     local condition="test -f ${config}"

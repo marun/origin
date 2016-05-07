@@ -249,7 +249,7 @@ create-undershift() {
     os::provision::wait-for-condition "${msg}" "${condition}"
 
     # Make the configuration readable so it can be used by oc
-    sudo chmod -R g+r openshift.local.config
+    sudo chmod -R g+rw openshift.local.config
   popd > /dev/null
 
   wait-for-cluster "${config}" "${bin_path}/oc" 1

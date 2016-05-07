@@ -60,6 +60,9 @@ items:
         - name: oz-config
           secret:
             secretName: oz-config
+        - name: lib-modules
+          hostPath:
+            path: "/lib/modules"
 
         containers:
         # Need to generate the image name from a template to be able to
@@ -74,6 +77,8 @@ items:
           - mountPath: /config
             name: oz-config
             readOnly: true
+          - mountPath: /lib/modules
+            name: lib-modules
           lifecycle:
             preStop:
               exec:

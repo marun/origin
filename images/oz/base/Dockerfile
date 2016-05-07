@@ -28,7 +28,7 @@ RUN dnf -y update && dnf -y install git golang hg tar make nfs-utils \
   # Node-specific packages
   openvswitch bridge-utils ethtool \
   # Volume-supporting packages
-  nfs-utils glusterfs-client \
+  nfs-utils glusterfs-fuse ceph-common \
   && dnf clean all
 
 # Install docker 1.10 from upstream until it lands in Fedora.  Avoid

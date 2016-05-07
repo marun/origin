@@ -23,6 +23,7 @@ create-config-secret() {
   local public_ip=$2
   local public_port=$3
   local undershift_service_ip=$4
+  local network_plugin=$5
 
   local master_config_dir="${config_root}/openshift.local.config/master"
   mkdir -p "${master_config_dir}"
@@ -51,27 +52,27 @@ create-config-secret() {
       --master="${master_url}" \
       --etcd-dir="/var/lib/origin/openshift.local.etcd" \
       --public-master="${public_url}" \
-      --network-plugin="redhat/openshift-ovs-subnet"
+      --network-plugin="${network_plugin}" > /dev/null
 
   openshift admin ca create-master-certs \
       --overwrite=false \
       --cert-dir="${master_config_dir}" \
       --hostnames="localhost,127.0.0.1,${public_ip},${undershift_service_ip},${master_fqdn},${overshift_service_ip}" \
       --master="${master_url}" \
-      --public-master="${public_url}"
+      --public-master="${public_url}" > /dev/null
 
   # Create config files that default to the appropriate context
   local localhost_conf="${master_config_dir}/admin.kubeconfig"
   local public_conf="${master_config_dir}/public-admin.kubeconfig"
   cp "${localhost_conf}" "${public_conf}"
   local public_ctx="default/$(echo "${public_ip}" | sed 's/\./-/g'):${public_port}/system:admin"
-  oc --config="${public_conf}" config use-context "${public_ctx}"
+  oc --config="${public_conf}" config use-context "${public_ctx}" > /dev/null
 
   local secret_file="${config_root}/config.json"
   openshift cli secrets new oz-config \
     "${config_root}/openshift.local.config/master/" \
     -o json > "${secret_file}"
-  oc create -f "${secret_file}"
+  oc create -f "${secret_file}" > /dev/null
 }
 
 get-kubeconfig() {
@@ -114,10 +115,10 @@ delete-cluster() {
 
   local overshift_root="$(get-overshift-root ${config_root})"
 
-  oc delete dc oz-node --ignore-not-found=true
-  oc delete dc oz-master --ignore-not-found=true
-  oc delete service oz-master --ignore-not-found=true
-  oc delete secret oz-config --ignore-not-found=true
+  oc delete dc oz-node --ignore-not-found=true > /dev/null
+  oc delete dc oz-master --ignore-not-found=true > /dev/null
+  oc delete service oz-master --ignore-not-found=true > /dev/null
+  oc delete secret oz-config --ignore-not-found=true > /dev/null
   # etcd permissions require the use of sudo
   sudo rm -rf "${overshift_root}"
 }
@@ -184,16 +185,20 @@ build-images() {
 create() {
   local origin_root=$1
   local config_root=$2
+  local network_plugin=$3
+
+  network_plugin="$(os::provision::get-network-plugin "${network_plugin}")"
 
   local overshift_root="$(get-overshift-root ${config_root})"
 
   local spec_root="${ORIGIN_ROOT}/hack/oz"
 
-  oc create -f "${spec_root}/oz-master-service.yaml"
+  oc create -f "${spec_root}/oz-master-service.yaml" > /dev/null
   service_ip="$(oc get service oz-master --template "{{ .spec.clusterIP }}")"
 
   # TODO: discover the port
-  create-config-secret "${overshift_root}" "${PUBLIC_IP}" "30123" "${service_ip}"
+  create-config-secret "${overshift_root}" "${PUBLIC_IP}" "30123" \
+      "${service_ip}" "${network_plugin}"
 
   # Add default service account to privileged scc to ensure that the
   # ozone container can be launched.
@@ -202,7 +207,7 @@ create() {
   # giving too much privilege to the default account.
   oadm policy add-scc-to-group privileged system:serviceaccounts:default
 
-  oc create -f "${spec_root}/ozone.yaml"
+  oc create -f "${spec_root}/ozone.yaml" > /dev/null
 
   create-rc-file "${ORIGIN_ROOT}" "${overshift_root}"
 }
@@ -320,19 +325,27 @@ node-exec() {
 case "${1:-""}" in
   create)
     WAIT_FOR_CLUSTER=
+    NETWORK_PLUGIN=
     OPTIND=2
-    while getopts ":w" opt; do
+    while getopts ":wn:" opt; do
       case $opt in
         w)
           WAIT_FOR_CLUSTER=1
+          ;;
+        n)
+          NETWORK_PLUGIN="${OPTARG}"
           ;;
         \?)
           echo "Invalid option: -${OPTARG}" >&2
           exit 1
           ;;
+        :)
+          echo "Option -${OPTARG} requires an argument." >&2
+          exit 1
+          ;;
       esac
     done
-    create "${ORIGIN_ROOT}" "${CONFIG_ROOT}"
+    create "${ORIGIN_ROOT}" "${CONFIG_ROOT}" "${NETWORK_PLUGIN}"
     if [[ -n "${WAIT_FOR_CLUSTER}" ]]; then
       wait-for-overshift "${CONFIG_ROOT}"
     fi

@@ -23,10 +23,12 @@ RUN cp /usr/lib/systemd/system/dbus.service /etc/systemd/system/; \
 VOLUME ["/run", "/tmp"]
 
 ## Install packages
-RUN dnf -y update && dnf -y install git golang hg tar make \
+RUN dnf -y update && dnf -y install git golang hg tar make nfs-utils \
   hostname bind-utils iproute iputils which procps-ng openssh-server \
   # Node-specific packages
   openvswitch bridge-utils ethtool \
+  # Volume-supporting packages
+  nfs-utils glusterfs-client \
   && dnf clean all
 
 # Install docker 1.10 from upstream until it lands in Fedora.  Avoid

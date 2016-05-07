@@ -455,7 +455,7 @@ EOF
   # Remove formatting before use
   template="$(echo "${template}" | tr -d '\n' | sed -e 's/} \+/}/g')"
   local count="$("${oc}" --config="${kubeconfig}" get nodes \
-                         --template "${template}" | wc -l)"
+                         --template "${template}" 2> /dev/null | wc -l)"
   test "${count}" -ge "${expected_node_count}"
 }
 

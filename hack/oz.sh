@@ -290,7 +290,7 @@ delete-undershift() {
 
     local pid="$(cat "${pid_filename}")"
     # TODO kill gracefully!
-    sudo -E kill -9 "${pid}"
+    sudo -E kill "${pid}"
     # TODO consider optionally saving cluster state
     sudo -E rm -rf "${undershift_root}"
   else

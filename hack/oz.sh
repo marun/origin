@@ -244,7 +244,7 @@ create-undershift() {
   local portal_net="172.40.0.0/16"
 
   pushd "${undershift_root}" > /dev/null
-    sudo bash -c "OPENSHIFT_DIND=true OPENSHIFT_DNS_DOMAIN=undershift.local \
+    sudo bash -c "OPENSHIFT_DNS_DOMAIN=undershift.local \
         ${bin_path}/openshift start --dns='tcp://${PUBLIC_IP}:53' \
         --portal-net=${portal_net} &> out.log & \
         echo \$! > ${undershift_root}/undershift.pid"

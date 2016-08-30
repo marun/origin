@@ -23,10 +23,10 @@ COPY sync-etc-hosts.timer /etc/systemd/system/
 RUN systemctl enable sync-etc-hosts.service
 RUN systemctl enable sync-etc-hosts.timer
 
+# TODO - use a drop-in unit file
 # Override name for node that will ensure master to pod connectivity
 RUN sed -i -e 's+^\(ExecStartPre=.*\)+\1 oz-master-node+'\
  /etc/systemd/system/openshift-node.service
-
 # Ensure that the node depends on the master
 RUN sed -i -e 's+^\(Requires=.*\)+\1 openshift-master.service+'\
  /etc/systemd/system/openshift-node.service

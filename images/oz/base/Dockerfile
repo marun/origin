@@ -4,60 +4,74 @@
 # The standard name for this image is openshift/oz-base
 #
 
-FROM fedora:23
+FROM fedora:24
 
 ## Configure systemd to run in a container
 ENV container=docker
 
-RUN systemctl mask systemd-remount-fs.service dev-hugepages.mount \
-  sys-fs-fuse-connections.mount systemd-logind.service getty.target \
-  console-getty.service dnf-makecache.service lvm2-lvmetad.service \
-  lvm2-lvmpolld systemd-udevd.service systemd-udev-hwdb-update.service \
-  systemd-udev-trigger.service docker-storage-setup.service \
-  dmeventd.service crond.service auditd.service dm-event.service \
-  systemd-vconsole-setup.service systemd-firstboot.service
-
-RUN cp /usr/lib/systemd/system/dbus.service /etc/systemd/system/; \
-  sed -i 's/OOMScoreAdjust=-900//' /etc/systemd/system/dbus.service
+# Fixup systemd
+RUN systemctl mask\
+ auditd.service\
+ console-getty.service\
+ dev-hugepages.mount\
+ dnf-makecache.service\
+ docker-storage-setup.service\
+ getty.target\
+ lvm2-lvmetad.service\
+ sys-fs-fuse-connections.mount\
+ systemd-logind.service\
+ systemd-remount-fs.service\
+ systemd-udev-hwdb-update.service\
+ systemd-udev-trigger.service\
+ systemd-udevd.service\
+ systemd-vconsole-setup.service
+RUN cp /usr/lib/systemd/system/dbus.service /etc/systemd/system/;\
+ sed -i 's/OOMScoreAdjust=-900//' /etc/systemd/system/dbus.service
 
 VOLUME ["/run", "/tmp"]
 
 ## Install packages
-RUN dnf -y update && dnf -y install git golang hg tar make nfs-utils \
-  hostname bind-utils iproute iputils which procps-ng openssh-server \
-  # Node-specific packages
-  openvswitch bridge-utils ethtool \
-  # Volume-supporting packages
-  nfs-utils glusterfs-fuse ceph-common \
-  && dnf clean all
-
-# Install docker 1.10 from upstream until it lands in Fedora.  Avoid
-# 1.11 for now.
-COPY docker.repo /etc/yum.repos.d/
-RUN dnf -y install\
- docker-engine-1.10.3\
- docker-engine-selinux-1.10.3\
+RUN dnf -y update && dnf -y install\
+ bind-utils\
+ findutils\
+ git\
+ golang\
+ hg\
+ hostname\
+ iproute\
+ iputils\
+ make\
+ openssh-server\
+ procps-ng\
+ tar\
+ which\
+ # Node-specific packages
+ bridge-utils\
+ docker\
+ ethtool\
+ iptables-services\
+ openvswitch\
+ # Volume-supporting packages
+ ceph-common\
+ glusterfs-fuse\
+ nfs-utils\
  && dnf clean all
 
-# sshd should be enabled as needed
+# sshd can be enabled as needed
 RUN systemctl disable sshd.service
 
-## Configure dind
-ENV DIND_COMMIT 81aa1b507f51901eafcfaad70a656da376cf937d
-RUN curl -fL "https://raw.githubusercontent.com/docker/docker/${DIND_COMMIT}/hack/dind" \
-  -o /usr/local/bin/dind-wrapper && chmod +x /usr/local/bin/dind-wrapper
-# The kubelet naively tries to manage a random process named 'docker'.
-# Rename docker to dind via hardlink to ensure an external kubelet
-# doesn't try to manage the docker-in-docker process.
-RUN ln /usr/bin/docker /usr/local/bin/dind
-RUN mkdir -p /etc/systemd/system/docker.service.d
-COPY oz.conf /etc/systemd/system/docker.service.d/
-COPY ensure-mount-propagation.service /etc/systemd/system/
-
+# Configure docker
 VOLUME /var/lib/docker
-
-RUN systemctl enable ensure-mount-propagation.service
 RUN systemctl enable docker.service
+# Default storage to vfs.  overlay will be enabled at runtime if available.
+RUN echo "DOCKER_STORAGE_OPTIONS=--storage-driver vfs" >\
+ /etc/sysconfig/docker-storage
+
+# TODO - add unit file that sets overlay as the storage driver if possible.
+# Will need to 'modprobe overlay' as well (via sidecar?)
+
+COPY ensure-mount-propagation.service /etc/systemd/system/
+RUN systemctl enable ensure-mount-propagation.service
 
 COPY openshift-generate-config.sh /usr/local/bin/
 
@@ -73,6 +87,7 @@ RUN systemctl enable openshift-node.service
 COPY bin/openshift-sdn-ovs /usr/local/bin/
 COPY bin/openshift-sdn-docker-setup.sh /usr/local/bin/
 
+## Install openshift
 COPY bin/openshift /usr/local/bin/openshift
 RUN ln -s /usr/local/bin/openshift /usr/local/bin/oc && \
     ln -s /usr/local/bin/openshift /usr/local/bin/oadm && \
@@ -87,4 +102,10 @@ RUN ln -s /usr/local/bin/openshift /usr/local/bin/oc && \
 # Fix 'WARNING: terminal is not fully functional' when TERM=dumb
 ENV TERM=xterm
 
-CMD ["/usr/sbin/init"]
+## Hardlink init to another name to avoid having oci-systemd-hooks
+## detect containers using this image as requiring read-only cgroup
+## mounts.  containers running docker need to be run with --privileged
+## to ensure cgroups are mounted with read-write permissions.
+RUN ln /usr/sbin/init /usr/sbin/nested_init
+
+CMD ["/usr/sbin/nested_init"]

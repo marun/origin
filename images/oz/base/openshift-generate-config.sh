@@ -16,8 +16,12 @@ if [ ! -f "${NODE_CONFIG_FILE}" ]; then
   cp /config/* "${MASTER_CONFIG_DIR}"
 
   NAME=$(hostname)
-  # TODO - discover master ip via env vars or use dns (not enabled by default in aio)
-  MASTER=$(grep server "${MASTER_CONFIG_DIR}/admin.kubeconfig" | grep -v localhost | awk '{print $2}')
+  if [[ -f /etc/systemd/system/openshift-master.service ]]; then
+    MASTER="https://localhost:8443"
+  else
+    MASTER="$(grep server "${MASTER_CONFIG_DIR}/admin.kubeconfig" | grep -v localhost | awk '{print $2}')"
+  fi
+
   IP_ADDR=$(ip addr | grep inet | grep eth0 | \
       awk '{print $2}' | sed -e 's+/.*++')
 

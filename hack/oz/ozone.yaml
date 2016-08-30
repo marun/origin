@@ -60,6 +60,7 @@ items:
         - name: oz-config
           secret:
             secretName: oz-config
+        # TODO - figure out how best to run modprobe on hosts
         - name: lib-modules
           hostPath:
             path: "/lib/modules"

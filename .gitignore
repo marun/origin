@@ -1,4 +1,5 @@
 /_output
+/_oz
 /openshift.local.*
 /third-party
 /.project
